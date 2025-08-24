@@ -1,11 +1,31 @@
 
 using MediatR;
-using AutoMapper;
 using MonthlyRevenueApi.Features;
 using MonthlyRevenueApi.Infrastructure.Database;
 using MonthlyRevenueApi.Services;
 
+
 var builder = WebApplication.CreateBuilder(args);
+
+// 讀取自訂環境設計檔
+var envConfig = new ConfigurationBuilder()
+	.SetBasePath(Directory.GetCurrentDirectory())
+	.AddJsonFile("appsettings.env.json", optional: true, reloadOnChange: true)
+	.Build();
+
+var envName = builder.Environment.EnvironmentName;
+var frontendUrl = envConfig[$"Environments:{envName}:FrontendUrl"] ?? "http://localhost:3000";
+
+// 註冊 CORS
+builder.Services.AddCors(options =>
+{
+	options.AddPolicy("AllowFrontend", policy =>
+	{
+		policy.WithOrigins(frontendUrl)
+			  .AllowAnyHeader()
+			  .AllowAnyMethod();
+	});
+});
 
 // DbConnectionFactory & SqlExtension DI
 builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
@@ -29,7 +49,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddMediatR(typeof(Program));
 
 // AutoMapper
-builder.Services.AddAutoMapper(typeof(Program).Assembly);
+builder.Services.AddAutoMapper(typeof(ImportMonthlyRevenueProfile).Assembly);
+
 
 var app = builder.Build();
 
@@ -39,6 +60,8 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 
+// 啟用 CORS
+app.UseCors("AllowFrontend");
 
 app.UseAuthorization();
 
