@@ -1,12 +1,4 @@
-CREATE PROCEDURE [dbo].[ImportMonthlyRevenueBatch]
-    @MonthlyRevenueList [dbo].[MonthlyRevenueTableType] READONLY,
-    @OutString NVARCHAR(8) OUTPUT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    BEGIN TRY
 
--- 批次 upsert SP（不用 MERGE）
 CREATE PROCEDURE [dbo].[ImportMonthlyRevenueBatch]
     @IndustryList [dbo].[IndustryTableType] READONLY,
     @CompanyList [dbo].[CompanyTableType] READONLY,
@@ -55,13 +47,6 @@ BEGIN
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0 ROLLBACK
-        SET @OutString = '99999999';
-    END CATCH
-END
-GO
-        SET @OutString = '00000000';
-    END TRY
-    BEGIN CATCH
         SET @OutString = '99999999';
     END CATCH
 END
