@@ -6,7 +6,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
-using MonthlyRevenueApi.Infrastructure.Database; // Add this if SqlExtension is in Extensions namespace
+using MonthlyRevenueApi.Infrastructure.Database;
+using MonthlyRevenueApi.Models.Base;
 using MonthlyRevenueApi.Utils;
 
 namespace MonthlyRevenueApi.Services
@@ -23,7 +24,7 @@ namespace MonthlyRevenueApi.Services
             _logger = logger;
         }
 
-        public async Task<IEnumerable<MonthlyRevenue>> GetByCompanyIdAsync(string? companyId)
+        public async Task<ApiResponse<IEnumerable<MonthlyRevenue>>> GetByCompanyIdAsync(string? companyId)
         {
             var sqlProperty = new SqlPropety
             {
@@ -33,7 +34,7 @@ namespace MonthlyRevenueApi.Services
             var result = await Task.Run(() =>
                 _sqlExtension.Execute<MonthlyRevenue>(
                     sqlProperty,
-                    "99999999",
+                    ErrorCodes.DefaultError,
                     () => new List<SqlParamter>
                     {
                         new SqlParamter( "@CompanyId", companyId ),
@@ -41,15 +42,16 @@ namespace MonthlyRevenueApi.Services
                     }
                 )
             );
-            return result.Result;
+            if (result.OutString == ErrorCodes.Success)
+                return ApiResponse<IEnumerable<MonthlyRevenue>>.Success(result.Result);
+            else
+                return ApiResponse<IEnumerable<MonthlyRevenue>>.Fail($"查詢失敗: {result.OutString}");
         }
 
-        public async Task<(int success, int fail, List<string> errors)> BulkInsertAllAsync(List<Industry> industries, List<Company> companies, List<MonthlyRevenue> revenues)
+        public async Task<ApiResponse<object>> BulkInsertAllAsync(List<Industry> industries, List<Company> companies, List<MonthlyRevenue> revenues)
         {
-            int success = 0, fail = 0;
-            var errors = new List<string>();
             if ((industries == null || industries.Count == 0) && (companies == null || companies.Count == 0) && (revenues == null || revenues.Count == 0))
-                return (0, 0, errors);
+                return ApiResponse<object>.Fail("無匯入資料");
 
             var industryTable = industries?.ToDataTable() ?? new System.Data.DataTable();
             var companyTable = companies?.ToDataTable() ?? new System.Data.DataTable();
@@ -63,7 +65,7 @@ namespace MonthlyRevenueApi.Services
             var result = await Task.Run(() =>
                 _sqlExtension.Execute(
                     sqlProperty,
-                    "99999999",
+                    ErrorCodes.DefaultError,
                     () => new List<SqlParamter>
                     {
                         new SqlParamter("@IndustryList", industryTable, true),
@@ -73,16 +75,16 @@ namespace MonthlyRevenueApi.Services
                     }
                 )
             );
-            if (result.OutString == "00000000")
+            if (result.OutString == ErrorCodes.Success)
             {
-                success = (industries?.Count ?? 0) + (companies?.Count ?? 0) + (revenues?.Count ?? 0);
+                var count = (industries?.Count ?? 0) + (companies?.Count ?? 0) + (revenues?.Count ?? 0);
+                return ApiResponse<object>.Success(new { SuccessCount = count }, "批次匯入成功");
             }
             else
             {
-                fail = (industries?.Count ?? 0) + (companies?.Count ?? 0) + (revenues?.Count ?? 0);
-                errors.Add($"批次匯入失敗: {result.OutString}");
+                var count = (industries?.Count ?? 0) + (companies?.Count ?? 0) + (revenues?.Count ?? 0);
+                return ApiResponse<object>.Fail($"批次匯入失敗: {result.OutString}", new { FailCount = count });
             }
-            return (success, fail, errors);
         }
     }
 }

@@ -1,15 +1,11 @@
 using MediatR;
-using MonthlyRevenueApi.Dtos;
+using MonthlyRevenueApi.Models.Base;
 using MonthlyRevenueApi.Models;
 using MonthlyRevenueApi.Services;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Linq;
 
 namespace MonthlyRevenueApi.Features
 {
-    public class ImportMonthlyRevenueHandler : IRequestHandler<ImportMonthlyRevenueCommand, ImportMonthlyRevenueResult>
+    public class ImportMonthlyRevenueHandler : IRequestHandler<ImportMonthlyRevenueCommand, ApiResponse<ImportMonthlyRevenueResult>>
     {
         private readonly IMonthlyRevenueService _service;
         public ImportMonthlyRevenueHandler(IMonthlyRevenueService service)
@@ -17,11 +13,11 @@ namespace MonthlyRevenueApi.Features
             _service = service;
         }
 
-        public async Task<ImportMonthlyRevenueResult> Handle(ImportMonthlyRevenueCommand request, CancellationToken cancellationToken)
+        public async Task<ApiResponse<ImportMonthlyRevenueResult>> Handle(ImportMonthlyRevenueCommand request, CancellationToken cancellationToken)
         {
             var result = new ImportMonthlyRevenueResult();
             if (request.Records == null || request.Records.Count == 0)
-                return result;
+                return ApiResponse<ImportMonthlyRevenueResult>.Fail("無匯入資料");
 
             // 轉換 DTO 為 DB Model
             var entities = request.Records.Select(dto => new MonthlyRevenue
@@ -41,11 +37,18 @@ namespace MonthlyRevenueApi.Features
             }).ToList();
 
             // 呼叫 Service 批次寫入
-            var (success, fail, errors) = await _service.BulkInsertAsync(entities);
-            result.SuccessCount = success;
-            result.FailCount = fail;
-            result.Errors = errors;
-            return result;
+            var serviceResult = await _service.BulkInsertAllAsync(new List<Industry>(), new List<Company>(), entities);
+            if (serviceResult.IsSuccess)
+            {
+                result.SuccessCount = entities.Count;
+                return ApiResponse<ImportMonthlyRevenueResult>.Success(result, "批次匯入成功");
+            }
+            else
+            {
+                result.FailCount = entities.Count;
+                result.Errors = new List<string> { serviceResult.Msg };
+                return ApiResponse<ImportMonthlyRevenueResult>.Fail(serviceResult.Msg, result);
+            }
         }
     }
 }

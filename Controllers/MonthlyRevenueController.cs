@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using MediatR;
+using MonthlyRevenueApi.Models.Base;
 using MonthlyRevenueApi.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -35,12 +36,12 @@ namespace MonthlyRevenueApi.Controllers
         public async Task<IActionResult> Import([FromForm] Microsoft.AspNetCore.Http.IFormFile file)
         {
             if (file == null || file.Length == 0)
-                return BadRequest("請上傳 CSV 檔案。");
+                return Ok(ApiResponse<object>.Fail("請上傳 CSV 檔案。"));
 
             using var stream = file.OpenReadStream();
             var records = MonthlyRevenueApi.Utils.CsvUtils.ParseMonthlyRevenue(stream).ToList();
             if (records.Count == 0)
-                return BadRequest("CSV 無有效資料。");
+                return Ok(ApiResponse<object>.Fail("CSV 無有效資料。"));
 
             // 呼叫 Service 進行批次寫入
             var result = await _mediator.Send(new MonthlyRevenueApi.Features.ImportMonthlyRevenueCommand(records));
