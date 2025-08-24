@@ -2,15 +2,19 @@ using MediatR;
 using MonthlyRevenueApi.Models.Base;
 using MonthlyRevenueApi.Models;
 using MonthlyRevenueApi.Services;
+using AutoMapper;
+using MonthlyRevenueApi.Dtos;
 
 namespace MonthlyRevenueApi.Features
 {
     public class ImportMonthlyRevenueHandler : IRequestHandler<ImportMonthlyRevenueCommand, ApiResponse<ImportMonthlyRevenueResult>>
     {
         private readonly IMonthlyRevenueService _service;
-        public ImportMonthlyRevenueHandler(IMonthlyRevenueService service)
+        private readonly IMapper _mapper;
+        public ImportMonthlyRevenueHandler(IMonthlyRevenueService service, IMapper mapper)
         {
             _service = service;
+            _mapper = mapper;
         }
 
         public async Task<ApiResponse<ImportMonthlyRevenueResult>> Handle(ImportMonthlyRevenueCommand request, CancellationToken cancellationToken)
@@ -19,25 +23,25 @@ namespace MonthlyRevenueApi.Features
             if (request.Records == null || request.Records.Count == 0)
                 return ApiResponse<ImportMonthlyRevenueResult>.Fail("無匯入資料");
 
-            // 轉換 DTO 為 DB Model
-            var entities = request.Records.Select(dto => new MonthlyRevenue
-            {
-                ReportDate = dto.ReportDate ?? string.Empty,
-                DataYearMonth = dto.DataYearMonth ?? string.Empty,
-                CompanyId = dto.CompanyId ?? string.Empty,
-                Revenue = dto.Revenue,
-                LastMonthRevenue = dto.LastMonthRevenue,
-                LastYearMonthRevenue = dto.LastYearMonthRevenue,
-                MoMChange = dto.MoMChange,
-                YoYChange = dto.YoYChange,
-                AccRevenue = dto.AccRevenue,
-                LastYearAccRevenue = dto.LastYearAccRevenue,
-                AccChange = dto.AccChange,
-                Memo = dto.Memo
-            }).ToList();
+            // 轉換 DTO 為 DB Model，並取得唯一 Industry/Company 清單
+            var entities = _mapper.Map<List<MonthlyRevenue>>(request.Records);
+            
+            var companies = request.Records
+                .Where(x => !string.IsNullOrWhiteSpace(x.CompanyId) && !string.IsNullOrWhiteSpace(x.CompanyName))
+                .Select(x => _mapper.Map<Company>(x))
+                .GroupBy(x => x.CompanyId)
+                .Select(g => g.First())
+                .ToList();
+
+            var industries = request.Records
+                .Where(x => !string.IsNullOrWhiteSpace(x.IndustryName))
+                .Select(x => _mapper.Map<Industry>(x))
+                .GroupBy(x => x.IndustryName)
+                .Select(g => g.First())
+                .ToList();
 
             // 呼叫 Service 批次寫入
-            var serviceResult = await _service.BulkInsertAllAsync(new List<Industry>(), new List<Company>(), entities);
+            var serviceResult = await _service.BulkInsertAllAsync(industries, companies, entities);
             if (serviceResult.IsSuccess)
             {
                 result.SuccessCount = entities.Count;

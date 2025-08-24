@@ -1,12 +1,10 @@
 using MediatR;
 using MonthlyRevenueApi.Dtos;
-using System.Collections.Generic;
+using MonthlyRevenueApi.Models.Base;
 
 namespace MonthlyRevenueApi.Features
 {
-    using MonthlyRevenueApi.Utils;
-
-    public class ImportMonthlyRevenueCommand : MediatR.IRequest<MonthlyRevenueApi.Models.Base.ApiResponse<ImportMonthlyRevenueResult>>
+    public class ImportMonthlyRevenueCommand : IRequest<ApiResponse<ImportMonthlyRevenueResult>>
     {
         public List<MonthlyRevenueDto> Records { get; }
         public ImportMonthlyRevenueCommand(List<MonthlyRevenueDto> records)
