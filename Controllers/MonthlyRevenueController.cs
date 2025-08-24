@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using MediatR;
 using MonthlyRevenueApi.Models.Base;
 using MonthlyRevenueApi.Models;
+using MonthlyRevenueApi.Dtos;
 using MonthlyRevenueApi.Utils;
 using MonthlyRevenueApi.Features;
 
@@ -22,7 +23,7 @@ namespace MonthlyRevenueApi.Controllers
         /// </summary>
         /// <param name="companyId">公司代號，可選</param>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<MonthlyRevenue>>> Get([FromQuery] string? companyId)
+        public async Task<ActionResult<ApiResponse<IEnumerable<MonthlyRevenueQueryDto>>>> Get([FromQuery] string? companyId)
         {
             var result = await _mediator.Send(new GetMonthlyRevenueByCompanyIdQuery(companyId));
             return Ok(result);

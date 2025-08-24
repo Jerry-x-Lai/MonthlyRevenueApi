@@ -1,14 +1,12 @@
 using System.Data;
 using Microsoft.Data.SqlClient;
 using Dapper;
-using MonthlyRevenueApi.Models;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-
 using MonthlyRevenueApi.Infrastructure.Database;
 using MonthlyRevenueApi.Models.Base;
 using MonthlyRevenueApi.Utils;
+using MonthlyRevenueApi.Dtos;
+using MonthlyRevenueApi.Models;
+using AutoMapper;
 
 namespace MonthlyRevenueApi.Services
 {
@@ -17,14 +15,16 @@ namespace MonthlyRevenueApi.Services
         private readonly SqlExtension _sqlExtension;
         private readonly IDbConnectionFactory _dbConnectionFactory;
         private readonly ILogger<MonthlyRevenueService> _logger;
-        public MonthlyRevenueService(SqlExtension sqlExtension, IDbConnectionFactory dbConnectionFactory, ILogger<MonthlyRevenueService> logger)
+        private readonly IMapper _mapper;
+        public MonthlyRevenueService(SqlExtension sqlExtension, IDbConnectionFactory dbConnectionFactory, ILogger<MonthlyRevenueService> logger, IMapper mapper)
         {
             _sqlExtension = sqlExtension;
             _dbConnectionFactory = dbConnectionFactory;
             _logger = logger;
+            _mapper = mapper;
         }
 
-        public async Task<ApiResponse<IEnumerable<MonthlyRevenue>>> GetByCompanyIdAsync(string? companyId)
+        public async Task<ApiResponse<IEnumerable<MonthlyRevenueQueryDto>>> GetByCompanyIdAsync(string? companyId)
         {
             var sqlProperty = new SqlPropety
             {
@@ -32,26 +32,26 @@ namespace MonthlyRevenueApi.Services
                 SpName = "GetMonthlyRevenueByCompanyId"
             };
             var result = await Task.Run(() =>
-                _sqlExtension.Execute<MonthlyRevenue>(
+                _sqlExtension.Execute<MonthlyRevenueQueryDto>(
                     sqlProperty,
                     ErrorCodes.DefaultError,
                     () => new List<SqlParamter>
                     {
-                        new SqlParamter( "@CompanyId", companyId ),
-                        new SqlParamter( "@OutString", SqlParamDirectionEnum.Output)
+                        new SqlParamter("@CompanyId", companyId ?? string.Empty),
+                        new SqlParamter("@OutString", SqlParamDirectionEnum.Output)
                     }
                 )
             );
             if (result.OutString == ErrorCodes.Success)
-                return ApiResponse<IEnumerable<MonthlyRevenue>>.Success(result.Result);
+                return ApiResponse<IEnumerable<MonthlyRevenueQueryDto>>.Success(result.Result);
             else
-                return ApiResponse<IEnumerable<MonthlyRevenue>>.Fail($"查詢失敗: {result.OutString}");
+                return ApiResponse<IEnumerable<MonthlyRevenueQueryDto>>.Fail($"查詢失敗: {result.OutString}");
         }
 
-        public async Task<ApiResponse<object>> BulkInsertAllAsync(List<Industry> industries, List<Company> companies, List<MonthlyRevenue> revenues)
+    public async Task<ApiResponse> BulkInsertAllAsync(List<Industry> industries, List<Company> companies, List<MonthlyRevenue> revenues)
         {
             if ((industries == null || industries.Count == 0) && (companies == null || companies.Count == 0) && (revenues == null || revenues.Count == 0))
-                return ApiResponse<object>.Fail("無匯入資料");
+                return ApiResponse.Fail("無匯入資料");
 
             var industryTable = industries?.ToDataTable() ?? new System.Data.DataTable();
             var companyTable = companies?.ToDataTable() ?? new System.Data.DataTable();
@@ -77,13 +77,11 @@ namespace MonthlyRevenueApi.Services
             );
             if (result.OutString == ErrorCodes.Success)
             {
-                var count = (industries?.Count ?? 0) + (companies?.Count ?? 0) + (revenues?.Count ?? 0);
-                return ApiResponse<object>.Success(new { SuccessCount = count }, "批次匯入成功");
+                return ApiResponse.Success("批次匯入成功");
             }
             else
             {
-                var count = (industries?.Count ?? 0) + (companies?.Count ?? 0) + (revenues?.Count ?? 0);
-                return ApiResponse<object>.Fail($"批次匯入失敗: {result.OutString}", new { FailCount = count });
+                return ApiResponse.Fail($"批次匯入失敗: {result.OutString}");
             }
         }
     }

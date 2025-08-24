@@ -9,8 +9,11 @@ CREATE PROCEDURE [dbo].[GetMonthlyRevenueByCompanyId]
 AS
 BEGIN
 	BEGIN TRY
-		SELECT * FROM MonthlyRevenue
-		WHERE @CompanyId IS NULL OR CompanyId = @CompanyId
+		SELECT m.*, c.CompanyName, i.IndustryName
+		FROM MonthlyRevenue m
+		LEFT JOIN Company c ON m.CompanyId = c.CompanyId
+		LEFT JOIN Industry i ON c.IndustryId = i.IndustryId
+		WHERE @CompanyId IS NULL OR m.CompanyId = @CompanyId
 		SET @OutString = '00000000';
 	END TRY
 	BEGIN CATCH

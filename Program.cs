@@ -39,6 +39,10 @@ builder.Services.AddScoped<IMonthlyRevenueService, MonthlyRevenueService>();
 builder.Services.AddControllers(options =>
 {
 	options.Filters.Add<MonthlyRevenueApi.Filters.GlobalExceptionFilter>();
+})
+.AddJsonOptions(options =>
+{
+	options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
 });
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -56,9 +60,13 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 
-// Always enable Swagger for demo
-app.UseSwagger();
-app.UseSwaggerUI();
+
+// 僅開發環境啟用 Swagger
+if (app.Environment.IsDevelopment())
+{
+	app.UseSwagger();
+	app.UseSwaggerUI();
+}
 
 // 啟用 CORS
 app.UseCors("AllowFrontend");
