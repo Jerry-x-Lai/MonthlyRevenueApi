@@ -37,8 +37,8 @@ namespace MonthlyRevenueApi.Services
                     ErrorCodes.DefaultError,
                     () => new List<SqlParamter>
                     {
-                        new SqlParamter("@CompanyId", companyId ?? string.Empty),
-                        new SqlParamter("@OutString", SqlParamDirectionEnum.Output)
+                        new SqlParamter("@CompanyId", companyId),
+                        new SqlParamter("@OutString", string.Empty, SqlParamDirectionEnum.Output)
                     }
                 )
             );
@@ -48,9 +48,9 @@ namespace MonthlyRevenueApi.Services
                 return ApiResponse<IEnumerable<MonthlyRevenueQueryDto>>.Fail($"查詢失敗: {result.OutString}");
         }
 
-    public async Task<ApiResponse> BulkInsertAllAsync(List<Industry> industries, List<Company> companies, List<MonthlyRevenue> revenues)
+        public async Task<ApiResponse> BulkInsertAllAsync(List<Industry> industries, List<Company> companies, List<MonthlyRevenue> revenues)
         {
-            if ((industries == null || industries.Count == 0) && (companies == null || companies.Count == 0) && (revenues == null || revenues.Count == 0))
+            if ((industries == null || !industries.Any()) && (companies == null || !companies.Any()) && (revenues == null || !revenues.Any()))
                 return ApiResponse.Fail("無匯入資料");
 
             var industryTable = industries?.ToDataTable() ?? new System.Data.DataTable();
@@ -71,7 +71,8 @@ namespace MonthlyRevenueApi.Services
                         new SqlParamter("@IndustryList", industryTable, true),
                         new SqlParamter("@CompanyList", companyTable, true),
                         new SqlParamter("@MonthlyRevenueList", revenueTable, true),
-                        new SqlParamter("@OutString", string.Empty, SqlParamDirectionEnum.Output)
+                        new SqlParamter("@OutString", string.Empty, SqlParamDirectionEnum.Output),
+                        new SqlParamter("@ErrorMessage", string.Empty, SqlParamDirectionEnum.Output)
                     }
                 )
             );

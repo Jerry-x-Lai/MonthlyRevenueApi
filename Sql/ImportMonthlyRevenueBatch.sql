@@ -3,7 +3,8 @@ CREATE PROCEDURE [dbo].[ImportMonthlyRevenueBatch]
     @IndustryList [dbo].[IndustryTableType] READONLY,
     @CompanyList [dbo].[CompanyTableType] READONLY,
     @MonthlyRevenueList [dbo].[MonthlyRevenueTableType] READONLY,
-    @OutString NVARCHAR(8) OUTPUT
+    @OutString NVARCHAR(8) OUTPUT,
+    @ErrorMessage NVARCHAR(4000) OUTPUT
 AS
 BEGIN
     SET XACT_ABORT ON;
@@ -18,8 +19,9 @@ BEGIN
 
         -- Company
         INSERT INTO Company (CompanyId, CompanyName, IndustryId)
-        SELECT s.CompanyId, s.CompanyName, s.IndustryId
+        SELECT s.CompanyId, s.CompanyName, i.IndustryId
         FROM @CompanyList s
+        INNER JOIN Industry i ON s.IndustryName = i.IndustryName
         WHERE NOT EXISTS (SELECT 1 FROM Company t WHERE t.CompanyId = s.CompanyId);
 
         -- Upsert MonthlyRevenue
@@ -47,6 +49,7 @@ BEGIN
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0 ROLLBACK
+        SET @ErrorMessage = ERROR_MESSAGE();
         SET @OutString = '99999999';
     END CATCH
 END

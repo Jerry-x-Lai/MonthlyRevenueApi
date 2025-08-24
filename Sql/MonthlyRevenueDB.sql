@@ -40,11 +40,11 @@ CREATE TABLE [dbo].[MonthlyRevenue](
 	[Revenue] [decimal](18, 2) NOT NULL,
 	[LastMonthRevenue] [decimal](18, 2) NULL,
 	[LastYearMonthRevenue] [decimal](18, 2) NULL,
-	[MoMChange] [decimal](18, 15) NULL,
-	[YoYChange] [decimal](18, 15) NULL,
+	[MoMChange] [decimal](22, 16) NULL,
+	[YoYChange] [decimal](22, 16) NULL,
 	[AccRevenue] [decimal](18, 2) NULL,
 	[LastYearAccRevenue] [decimal](18, 2) NULL,
-	[AccChange] [decimal](18, 15) NULL,
+	[AccChange] [decimal](22, 16) NULL,
 	[Memo] [nvarchar](200) NULL,
  CONSTRAINT [PK_MonthlyRevenue] PRIMARY KEY CLUSTERED 
 (
@@ -83,25 +83,25 @@ CREATE TYPE [dbo].[IndustryTableType] AS TABLE (
 )
 GO
 CREATE TYPE [dbo].[CompanyTableType] AS TABLE (
-    [CompanyId] NVARCHAR(10) NOT NULL,
-    [CompanyName] NVARCHAR(100) NOT NULL,
-    [IndustryId] INT NOT NULL
+	[CompanyId] NVARCHAR(10) NOT NULL,
+	[CompanyName] NVARCHAR(100) NOT NULL,
+	[IndustryName] NVARCHAR(50) NOT NULL
 )
 GO
 
 CREATE TYPE [dbo].[MonthlyRevenueTableType] AS TABLE
 (
-    [ReportDate] NVARCHAR(10),
-    [DataYearMonth] NVARCHAR(6),
     [CompanyId] NVARCHAR(10),
+    [DataYearMonth] NVARCHAR(6),
+    [ReportDate] NVARCHAR(10),
     [Revenue] DECIMAL(18,2),
     [LastMonthRevenue] DECIMAL(18,2) NULL,
     [LastYearMonthRevenue] DECIMAL(18,2) NULL,
-    [MoMChange] DECIMAL(18,15) NULL,
-    [YoYChange] DECIMAL(18,15) NULL,
+    [MoMChange] DECIMAL(22,16) NULL,
+    [YoYChange] DECIMAL(22,16) NULL,
     [AccRevenue] DECIMAL(18,2) NULL,
     [LastYearAccRevenue] DECIMAL(18,2) NULL,
-    [AccChange] DECIMAL(18,15) NULL,
+    [AccChange] DECIMAL(22,16) NULL,
     [Memo] NVARCHAR(200) NULL
 )
 GO

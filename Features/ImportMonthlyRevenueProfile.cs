@@ -25,7 +25,7 @@ namespace MonthlyRevenueApi.Features
             CreateMap<MonthlyRevenueDto, Company>()
                 .ForMember(dest => dest.CompanyId, opt => opt.MapFrom(src => src.CompanyId ?? string.Empty))
                 .ForMember(dest => dest.CompanyName, opt => opt.MapFrom(src => src.CompanyName ?? string.Empty))
-                .ForMember(dest => dest.IndustryId, opt => opt.Ignore()); // 需後續補正
+                .ForMember(dest => dest.IndustryName, opt => opt.MapFrom(src => src.IndustryName ?? string.Empty));
 
             CreateMap<MonthlyRevenueDto, Industry>()
                 .ForMember(dest => dest.IndustryName, opt => opt.MapFrom(src => src.IndustryName ?? string.Empty))

@@ -2,8 +2,8 @@ namespace MonthlyRevenueApi.Models
 {
     public class Company
     {
-        public string CompanyId { get; set; }
-        public string CompanyName { get; set; }
-        public int IndustryId { get; set; }
+        public string CompanyId { get; set; } = string.Empty;
+        public string CompanyName { get; set; } = string.Empty;
+        public string IndustryName { get; set; } = string.Empty;
     }
 }
