@@ -5,7 +5,9 @@ using MonthlyRevenueApi.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+
 using MonthlyRevenueApi.Infrastructure.Database; // Add this if SqlExtension is in Extensions namespace
+using MonthlyRevenueApi.Utils;
 
 namespace MonthlyRevenueApi.Services
 {
@@ -42,45 +44,17 @@ namespace MonthlyRevenueApi.Services
             return result.Result;
         }
 
-        public async Task<(int success, int fail, List<string> errors)> BulkInsertAsync(List<MonthlyRevenue> entities)
+        public async Task<(int success, int fail, List<string> errors)> BulkInsertAllAsync(List<Industry> industries, List<Company> companies, List<MonthlyRevenue> revenues)
         {
             int success = 0, fail = 0;
             var errors = new List<string>();
-            if (entities == null || entities.Count == 0) return (0, 0, errors);
+            if ((industries == null || industries.Count == 0) && (companies == null || companies.Count == 0) && (revenues == null || revenues.Count == 0))
+                return (0, 0, errors);
 
-            // 轉 DataTable
-            var table = new System.Data.DataTable();
-            table.Columns.Add("ReportDate", typeof(string));
-            table.Columns.Add("DataYearMonth", typeof(string));
-            table.Columns.Add("CompanyId", typeof(string));
-            table.Columns.Add("Revenue", typeof(decimal));
-            table.Columns.Add("LastMonthRevenue", typeof(decimal));
-            table.Columns.Add("LastYearMonthRevenue", typeof(decimal));
-            table.Columns.Add("MoMChange", typeof(decimal));
-            table.Columns.Add("YoYChange", typeof(decimal));
-            table.Columns.Add("AccRevenue", typeof(decimal));
-            table.Columns.Add("LastYearAccRevenue", typeof(decimal));
-            table.Columns.Add("AccChange", typeof(decimal));
-            table.Columns.Add("Memo", typeof(string));
-            foreach (var e in entities)
-            {
-                table.Rows.Add(
-                    e.ReportDate,
-                    e.DataYearMonth,
-                    e.CompanyId,
-                    e.Revenue,
-                    (object?)e.LastMonthRevenue ?? DBNull.Value,
-                    (object?)e.LastYearMonthRevenue ?? DBNull.Value,
-                    (object?)e.MoMChange ?? DBNull.Value,
-                    (object?)e.YoYChange ?? DBNull.Value,
-                    (object?)e.AccRevenue ?? DBNull.Value,
-                    (object?)e.LastYearAccRevenue ?? DBNull.Value,
-                    (object?)e.AccChange ?? DBNull.Value,
-                    (object?)e.Memo ?? DBNull.Value
-                );
-            }
+            var industryTable = industries?.ToDataTable() ?? new System.Data.DataTable();
+            var companyTable = companies?.ToDataTable() ?? new System.Data.DataTable();
+            var revenueTable = revenues?.ToDataTable() ?? new System.Data.DataTable();
 
-            // 使用新版 SqlExtension 執行 SP 並取得 outString
             var sqlProperty = new SqlPropety
             {
                 DbConnectionName = "DefaultConnection",
@@ -92,18 +66,20 @@ namespace MonthlyRevenueApi.Services
                     "99999999",
                     () => new List<SqlParamter>
                     {
-                        new SqlParamter("@MonthlyRevenueList", table, true),
+                        new SqlParamter("@IndustryList", industryTable, true),
+                        new SqlParamter("@CompanyList", companyTable, true),
+                        new SqlParamter("@MonthlyRevenueList", revenueTable, true),
                         new SqlParamter("@OutString", string.Empty, SqlParamDirectionEnum.Output)
                     }
                 )
             );
             if (result.OutString == "00000000")
             {
-                success = entities.Count;
+                success = (industries?.Count ?? 0) + (companies?.Count ?? 0) + (revenues?.Count ?? 0);
             }
             else
             {
-                fail = entities.Count;
+                fail = (industries?.Count ?? 0) + (companies?.Count ?? 0) + (revenues?.Count ?? 0);
                 errors.Add($"批次匯入失敗: {result.OutString}");
             }
             return (success, fail, errors);

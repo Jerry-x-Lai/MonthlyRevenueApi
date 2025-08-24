@@ -76,22 +76,32 @@ ALTER TABLE [dbo].[MonthlyRevenue]  WITH CHECK ADD FOREIGN KEY([CompanyId])
 REFERENCES [dbo].[Company] ([CompanyId])
 GO
 
--- 查詢 SP
-SET ANSI_NULLS ON
+-- 所有 Table Type 定義
+CREATE TYPE [dbo].[IndustryTableType] AS TABLE (
+    [IndustryId] INT NULL,
+    [IndustryName] NVARCHAR(50) NOT NULL
+)
 GO
-SET QUOTED_IDENTIFIER ON
+CREATE TYPE [dbo].[CompanyTableType] AS TABLE (
+    [CompanyId] NVARCHAR(10) NOT NULL,
+    [CompanyName] NVARCHAR(100) NOT NULL,
+    [IndustryId] INT NOT NULL
+)
 GO
-CREATE PROCEDURE [dbo].[GetMonthlyRevenueByCompanyId]
-	@CompanyId NVARCHAR(10) = NULL,
-	@OutString NVARCHAR(8) OUTPUT
-AS
-BEGIN
-	BEGIN TRY
-		SELECT * FROM MonthlyRevenue
-		WHERE @CompanyId IS NULL OR CompanyId = @CompanyId
-		SET @OutString = '00000000';
-	END TRY
-	BEGIN CATCH
-		SET @OutString = '99999999';
-	END CATCH
-END
+
+CREATE TYPE [dbo].[MonthlyRevenueTableType] AS TABLE
+(
+    [ReportDate] NVARCHAR(10),
+    [DataYearMonth] NVARCHAR(6),
+    [CompanyId] NVARCHAR(10),
+    [Revenue] DECIMAL(18,2),
+    [LastMonthRevenue] DECIMAL(18,2) NULL,
+    [LastYearMonthRevenue] DECIMAL(18,2) NULL,
+    [MoMChange] DECIMAL(18,15) NULL,
+    [YoYChange] DECIMAL(18,15) NULL,
+    [AccRevenue] DECIMAL(18,2) NULL,
+    [LastYearAccRevenue] DECIMAL(18,2) NULL,
+    [AccChange] DECIMAL(18,15) NULL,
+    [Memo] NVARCHAR(200) NULL
+)
+GO

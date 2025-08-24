@@ -1,0 +1,19 @@
+-- 查詢 SP
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE PROCEDURE [dbo].[GetMonthlyRevenueByCompanyId]
+	@CompanyId NVARCHAR(10) = NULL,
+	@OutString NVARCHAR(8) OUTPUT
+AS
+BEGIN
+	BEGIN TRY
+		SELECT * FROM MonthlyRevenue
+		WHERE @CompanyId IS NULL OR CompanyId = @CompanyId
+		SET @OutString = '00000000';
+	END TRY
+	BEGIN CATCH
+		SET @OutString = '99999999';
+	END CATCH
+END

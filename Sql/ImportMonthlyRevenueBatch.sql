@@ -1,20 +1,3 @@
-CREATE TYPE [dbo].[MonthlyRevenueTableType] AS TABLE
-(
-    [ReportDate] NVARCHAR(10),
-    [DataYearMonth] NVARCHAR(6),
-    [CompanyId] NVARCHAR(10),
-    [Revenue] DECIMAL(18,2),
-    [LastMonthRevenue] DECIMAL(18,2) NULL,
-    [LastYearMonthRevenue] DECIMAL(18,2) NULL,
-    [MoMChange] DECIMAL(18,15) NULL,
-    [YoYChange] DECIMAL(18,15) NULL,
-    [AccRevenue] DECIMAL(18,2) NULL,
-    [LastYearAccRevenue] DECIMAL(18,2) NULL,
-    [AccChange] DECIMAL(18,15) NULL,
-    [Memo] NVARCHAR(200) NULL
-)
-GO
-
 CREATE PROCEDURE [dbo].[ImportMonthlyRevenueBatch]
     @MonthlyRevenueList [dbo].[MonthlyRevenueTableType] READONLY,
     @OutString NVARCHAR(8) OUTPUT
@@ -22,30 +5,60 @@ AS
 BEGIN
     SET NOCOUNT ON;
     BEGIN TRY
-        MERGE INTO [dbo].[MonthlyRevenue] AS Target
-        USING @MonthlyRevenueList AS Source
-        ON Target.CompanyId = Source.CompanyId AND Target.DataYearMonth = Source.DataYearMonth
-        WHEN MATCHED THEN
-            UPDATE SET
-                Target.ReportDate = Source.ReportDate,
-                Target.Revenue = Source.Revenue,
-                Target.LastMonthRevenue = Source.LastMonthRevenue,
-                Target.LastYearMonthRevenue = Source.LastYearMonthRevenue,
-                Target.MoMChange = Source.MoMChange,
-                Target.YoYChange = Source.YoYChange,
-                Target.AccRevenue = Source.AccRevenue,
-                Target.LastYearAccRevenue = Source.LastYearAccRevenue,
-                Target.AccChange = Source.AccChange,
-                Target.Memo = Source.Memo
-        WHEN NOT MATCHED THEN
-            INSERT (
-                ReportDate, DataYearMonth, CompanyId, Revenue, LastMonthRevenue, LastYearMonthRevenue,
-                MoMChange, YoYChange, AccRevenue, LastYearAccRevenue, AccChange, Memo
-            )
-            VALUES (
-                Source.ReportDate, Source.DataYearMonth, Source.CompanyId, Source.Revenue, Source.LastMonthRevenue, Source.LastYearMonthRevenue,
-                Source.MoMChange, Source.YoYChange, Source.AccRevenue, Source.LastYearAccRevenue, Source.AccChange, Source.Memo
-            );
+
+-- 批次 upsert SP（不用 MERGE）
+CREATE PROCEDURE [dbo].[ImportMonthlyRevenueBatch]
+    @IndustryList [dbo].[IndustryTableType] READONLY,
+    @CompanyList [dbo].[CompanyTableType] READONLY,
+    @MonthlyRevenueList [dbo].[MonthlyRevenueTableType] READONLY,
+    @OutString NVARCHAR(8) OUTPUT
+AS
+BEGIN
+    SET XACT_ABORT ON;
+    BEGIN TRY
+        BEGIN TRAN
+
+        -- Industry
+        INSERT INTO Industry (IndustryName)
+        SELECT s.IndustryName
+        FROM @IndustryList s
+        WHERE NOT EXISTS (SELECT 1 FROM Industry t WHERE t.IndustryName = s.IndustryName);
+
+        -- Company
+        INSERT INTO Company (CompanyId, CompanyName, IndustryId)
+        SELECT s.CompanyId, s.CompanyName, s.IndustryId
+        FROM @CompanyList s
+        WHERE NOT EXISTS (SELECT 1 FROM Company t WHERE t.CompanyId = s.CompanyId);
+
+        -- Upsert MonthlyRevenue
+        UPDATE t
+        SET t.ReportDate = s.ReportDate,
+            t.Revenue = s.Revenue,
+            t.LastMonthRevenue = s.LastMonthRevenue,
+            t.LastYearMonthRevenue = s.LastYearMonthRevenue,
+            t.MoMChange = s.MoMChange,
+            t.YoYChange = s.YoYChange,
+            t.AccRevenue = s.AccRevenue,
+            t.LastYearAccRevenue = s.LastYearAccRevenue,
+            t.AccChange = s.AccChange,
+            t.Memo = s.Memo
+        FROM MonthlyRevenue t
+        INNER JOIN @MonthlyRevenueList s ON t.CompanyId = s.CompanyId AND t.DataYearMonth = s.DataYearMonth;
+
+        INSERT INTO MonthlyRevenue (ReportDate, DataYearMonth, CompanyId, Revenue, LastMonthRevenue, LastYearMonthRevenue, MoMChange, YoYChange, AccRevenue, LastYearAccRevenue, AccChange, Memo)
+        SELECT s.ReportDate, s.DataYearMonth, s.CompanyId, s.Revenue, s.LastMonthRevenue, s.LastYearMonthRevenue, s.MoMChange, s.YoYChange, s.AccRevenue, s.LastYearAccRevenue, s.AccChange, s.Memo
+        FROM @MonthlyRevenueList s
+        WHERE NOT EXISTS (SELECT 1 FROM MonthlyRevenue t WHERE t.CompanyId = s.CompanyId AND t.DataYearMonth = s.DataYearMonth);
+
+        COMMIT
+        SET @OutString = '00000000';
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK
+        SET @OutString = '99999999';
+    END CATCH
+END
+GO
         SET @OutString = '00000000';
     END TRY
     BEGIN CATCH
